@@ -15,7 +15,6 @@ export const typeDefs = `#graphql
     id: ID!
     firstName: String!
     lastName: String!
-    shortName: String!
     email: String!
     pin: String!
     status: UserStatus!
@@ -44,7 +43,6 @@ export const typeDefs = `#graphql
     register(
       firstName: String!
       lastName: String!
-      shortName: String!
       email: String!
       password: String!
       pin: String!
