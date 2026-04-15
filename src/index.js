@@ -14,18 +14,22 @@ const app = express();
 app.use(cors());
 app.use(bodyParser.json());
 
-const server = new ApolloServer({ typeDefs, resolvers });
+const server = new ApolloServer({ typeDefs, resolvers, stopOnTerminationSignals: false });
 await server.start();
 
 app.use("/graphql", expressMiddleware(server, { context: createContext }));
 
 const PORT = process.env.PORT || 4000;
-app.listen(PORT, () => {
+const httpServer = app.listen(PORT, () => {
   console.log(`Server running at http://localhost:${PORT}/graphql`);
 });
 
-// Graceful shutdown
-process.on("SIGTERM", async () => {
+const shutdown = async () => {
+  httpServer.close();
   await server.stop();
   await prisma.$disconnect();
-});
+};
+
+process.on("SIGTERM", async () => { await shutdown(); process.exit(0); });
+process.on("SIGINT", async () => { await shutdown(); process.exit(0); });
+

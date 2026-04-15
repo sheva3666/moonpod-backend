@@ -6,9 +6,19 @@ export const typeDefs = `#graphql
   }
 
   enum AccountType {
+    OWNER
     EMPLOYEE
     MANAGER
     ADMIN
+  }
+
+  type Company {
+    id: ID!
+    name: String!
+    address: String!
+    phone: String!
+    createdAt: String!
+    updatedAt: String!
   }
 
   type User {
@@ -19,6 +29,7 @@ export const typeDefs = `#graphql
     pin: String!
     status: UserStatus!
     accountType: AccountType!
+    company: Company!
     createdAt: String!
     updatedAt: String!
   }
@@ -41,6 +52,9 @@ export const typeDefs = `#graphql
 
   type Mutation {
     register(
+      companyName: String!
+      companyAddress: String!
+      companyPhone: String!
       firstName: String!
       lastName: String!
       email: String!

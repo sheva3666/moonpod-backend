@@ -16,12 +16,23 @@ enum UserStatus {
 }
 
 enum AccountType {
+  OWNER
   EMPLOYEE
   MANAGER
   ADMIN
 }
 
 // ─── Models ──────────────────────────────────────────────────────────────────
+
+model Company {
+  id        String   @id @default(uuid())
+  name      String
+  address   String
+  phone     String
+  users     User[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
 
 model User {
   id           String         @id @default(uuid())
@@ -32,6 +43,8 @@ model User {
   pin          String
   status       UserStatus     @default(PENDING)
   accountType  AccountType    @default(EMPLOYEE)
+  companyId    String
+  company      Company        @relation(fields: [companyId], references: [id])
   locations    UserLocation[]
   roles        UserRole[]
   schedules    Schedule[]

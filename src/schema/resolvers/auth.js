@@ -14,7 +14,7 @@ function refreshTokenExpiryDate() {
 }
 
 export const authMutations = {
-  async register(_, { firstName, lastName, email, password, pin }, { prisma }) {
+  async register(_, { companyName, companyAddress, companyPhone, firstName, lastName, email, password, pin }, { prisma }) {
     const existing = await prisma.user.findUnique({ where: { email } });
     if (existing) {
       throw new GraphQLError("Email already in use", {
@@ -25,8 +25,21 @@ export const authMutations = {
     const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
     const hashedPin = await bcrypt.hash(pin, SALT_ROUNDS);
 
+    const company = await prisma.company.create({
+      data: { name: companyName, address: companyAddress, phone: companyPhone },
+    });
+
     const user = await prisma.user.create({
-      data: { firstName, lastName, email, password: hashedPassword, pin: hashedPin },
+      data: {
+        firstName,
+        lastName,
+        email,
+        password: hashedPassword,
+        pin: hashedPin,
+        accountType: "OWNER",
+        companyId: company.id,
+      },
+      include: { company: true },
     });
 
     const payload = { userId: user.id };
