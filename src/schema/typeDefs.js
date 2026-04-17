@@ -65,5 +65,8 @@ export const typeDefs = `#graphql
     login(email: String!, password: String!): AuthPayload!
     refreshToken(refreshToken: String!): RefreshPayload!
     logout(refreshToken: String!): Boolean!
+
+    sendMagicLink(email: String!): Boolean!
+    verifyMagicLink(token: String!): AuthPayload!
   }
 `;

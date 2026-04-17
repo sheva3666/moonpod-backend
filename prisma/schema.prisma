@@ -49,7 +49,8 @@ model User {
   roles        UserRole[]
   schedules    Schedule[]
   appointments Appointment[]
-  refreshTokens RefreshToken[]
+  refreshTokens   RefreshToken[]
+  magicLinkTokens MagicLinkToken[]
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
 }
@@ -120,5 +121,15 @@ model RefreshToken {
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+model MagicLinkToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  used      Boolean  @default(false)
   createdAt DateTime @default(now())
 }
