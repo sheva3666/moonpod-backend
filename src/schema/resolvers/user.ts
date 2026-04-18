@@ -5,6 +5,15 @@ import type { UserWithCompany } from "../../types.js";
 const MAX_PAGE_SIZE = 100;
 
 export const userQueries = {
+  async checkEmail(
+    _: unknown,
+    { email }: { email: string },
+    { prisma }: AppContext,
+  ): Promise<{ exists: boolean }> {
+    const user = await prisma.user.findUnique({ where: { email }, select: { id: true } });
+    return { exists: user !== null };
+  },
+
   async me(
     _: unknown,
     __: Record<string, never>,

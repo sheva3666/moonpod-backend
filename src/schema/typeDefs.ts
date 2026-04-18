@@ -45,9 +45,14 @@ export const typeDefs = `#graphql
     refreshToken: String!
   }
 
+  type EmailCheckResult {
+    exists: Boolean!
+  }
+
   type Query {
     me: User!
     users: [User!]!
+    checkEmail(email: String!): EmailCheckResult!
   }
 
   type Mutation {
