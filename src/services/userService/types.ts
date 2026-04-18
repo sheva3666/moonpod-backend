@@ -1,9 +1,20 @@
+export type TeamMembersFilter = {
+  firstName?: string | null;
+  lastName?: string | null;
+  email?: string | null;
+  role?: string | null;
+  accountType?: string | null;
+  pin?: string | null;
+  status?: string | null;
+};
+
 export type TeamMembersArgs = {
   page?: number | null;
   pageSize?: number | null;
   sortField?: string | null;
   sortDirection?: string | null;
   search?: string | null;
+  filter?: TeamMembersFilter | null;
 };
 
 export type TeamMemberDto = {

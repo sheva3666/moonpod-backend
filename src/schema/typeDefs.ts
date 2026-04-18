@@ -80,6 +80,16 @@ export const typeDefs = `#graphql
     exists: Boolean!
   }
 
+  input TeamMembersFilter {
+    firstName: String
+    lastName: String
+    email: String
+    role: String
+    accountType: AccountType
+    pin: String
+    status: UserStatus
+  }
+
   type Query {
     me: User!
     users: [User!]!
@@ -90,6 +100,7 @@ export const typeDefs = `#graphql
       sortField: UserSortField
       sortDirection: SortDirection
       search: String
+      filter: TeamMembersFilter
     ): TeamMembersResult!
   }
 
