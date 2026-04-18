@@ -1,7 +1,7 @@
 import { GraphQLError } from "graphql";
 import type { AppContext } from "../../context.js";
 import type { UserWithCompany } from "../../types.js";
-import { userService, type TeamMembersArgs, type TeamMembersResult } from "../../services/userService.js";
+import { userService, type TeamMembersArgs, type TeamMembersResult } from "../../services/userService/index.js";
 
 const MAX_PAGE_SIZE = 100;
 

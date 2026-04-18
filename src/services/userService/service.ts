@@ -1,34 +1,11 @@
 import { GraphQLError } from "graphql";
 import type { Prisma } from "@prisma/client";
-import type { AppContext } from "../context.js";
+import type { AppContext } from "../../context.js";
+import type { TeamMembersArgs, TeamMembersResult } from "./types.js";
+import { buildOrderBy, buildSearchFilter } from "./utils.js";
 
 const DEFAULT_PAGE_SIZE = 30;
 const MAX_PAGE_SIZE = 100;
-
-export type TeamMembersArgs = {
-  page?: number | null;
-  pageSize?: number | null;
-  sortField?: string | null;
-  sortDirection?: string | null;
-  search?: string | null;
-};
-
-export type TeamMemberDto = {
-  id: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  pin: string;
-  status: string;
-  accountType: string;
-  roles: string[];
-  createdAt: string;
-};
-
-export type TeamMembersResult = {
-  members: TeamMemberDto[];
-  total: number;
-};
 
 export const userService = {
   async getTeamMembers(
@@ -88,26 +65,3 @@ export const userService = {
     };
   },
 };
-
-function buildSearchFilter(search?: string | null): Prisma.UserWhereInput {
-  if (!search?.trim()) return {};
-  const term = search.trim();
-  return {
-    OR: [
-      { firstName: { contains: term, mode: "insensitive" } },
-      { lastName: { contains: term, mode: "insensitive" } },
-      { email: { contains: term, mode: "insensitive" } },
-    ],
-  };
-}
-
-function buildOrderBy(field: string, direction: "asc" | "desc"): Prisma.UserOrderByWithRelationInput {
-  const map: Record<string, Prisma.UserOrderByWithRelationInput> = {
-    FIRST_NAME: { firstName: direction },
-    LAST_NAME: { lastName: direction },
-    EMAIL: { email: direction },
-    STATUS: { status: direction },
-    ACCOUNT_TYPE: { accountType: direction },
-  };
-  return map[field] ?? { createdAt: direction };
-}
