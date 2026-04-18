@@ -12,6 +12,20 @@ export const typeDefs = `#graphql
     ADMIN
   }
 
+  enum SortDirection {
+    ASC
+    DESC
+  }
+
+  enum UserSortField {
+    FIRST_NAME
+    LAST_NAME
+    EMAIL
+    STATUS
+    ACCOUNT_TYPE
+    CREATED_AT
+  }
+
   type Company {
     id: ID!
     name: String!
@@ -34,6 +48,23 @@ export const typeDefs = `#graphql
     updatedAt: String!
   }
 
+  type TeamMember {
+    id: ID!
+    firstName: String!
+    lastName: String!
+    email: String!
+    pin: String!
+    status: UserStatus!
+    accountType: AccountType!
+    roles: [String!]!
+    createdAt: String!
+  }
+
+  type TeamMembersResult {
+    members: [TeamMember!]!
+    total: Int!
+  }
+
   type AuthPayload {
     accessToken: String!
     refreshToken: String!
@@ -53,6 +84,13 @@ export const typeDefs = `#graphql
     me: User!
     users: [User!]!
     checkEmail(email: String!): EmailCheckResult!
+    teamMembers(
+      page: Int
+      pageSize: Int
+      sortField: UserSortField
+      sortDirection: SortDirection
+      search: String
+    ): TeamMembersResult!
   }
 
   type Mutation {

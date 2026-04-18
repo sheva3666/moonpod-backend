@@ -1,6 +1,7 @@
 import { GraphQLError } from "graphql";
 import type { AppContext } from "../../context.js";
 import type { UserWithCompany } from "../../types.js";
+import { userService, type TeamMembersArgs, type TeamMembersResult } from "../../services/userService.js";
 
 const MAX_PAGE_SIZE = 100;
 
@@ -51,5 +52,13 @@ export const userQueries = {
       orderBy: { createdAt: "desc" },
       take: MAX_PAGE_SIZE,
     });
+  },
+
+  async teamMembers(
+    _: unknown,
+    args: TeamMembersArgs,
+    context: AppContext,
+  ): Promise<TeamMembersResult> {
+    return userService.getTeamMembers(context, args);
   },
 };
