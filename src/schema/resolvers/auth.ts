@@ -3,27 +3,55 @@ import { GraphQLError } from "graphql";
 import {
   generateAccessToken,
   generateRefreshToken,
+  getRefreshTokenExpiry,
   verifyRefreshToken,
 } from "../../auth/jwt.js";
+import type { AppContext } from "../../context.js";
+import type { AuthPayloadResult } from "../../types.js";
 
 const SALT_ROUNDS = 12;
 
-function refreshTokenExpiryDate() {
-  const days = parseInt(process.env.JWT_REFRESH_EXPIRES_IN) || 7;
-  return new Date(Date.now() + days * 24 * 60 * 60 * 1000);
-}
+type RegisterArgs = {
+  companyName: string;
+  companyAddress: string;
+  companyPhone: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  password: string;
+  pin: string;
+};
+
+type LoginArgs = {
+  email: string;
+  password: string;
+};
+
+type RefreshTokenArgs = {
+  refreshToken: string;
+};
+
+type LogoutArgs = {
+  refreshToken: string;
+};
 
 export const authMutations = {
-  async register(_, { companyName, companyAddress, companyPhone, firstName, lastName, email, password, pin }, { prisma }) {
-    const existing = await prisma.user.findUnique({ where: { email } });
+  async register(
+    _: unknown,
+    { companyName, companyAddress, companyPhone, firstName, lastName, email, password, pin }: RegisterArgs,
+    { prisma }: AppContext,
+  ): Promise<AuthPayloadResult> {
+    const existing = await prisma.user.findUnique({ where: { email }, select: { id: true } });
     if (existing) {
       throw new GraphQLError("Email already in use", {
         extensions: { code: "BAD_USER_INPUT" },
       });
     }
 
-    const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
-    const hashedPin = await bcrypt.hash(pin, SALT_ROUNDS);
+    const [hashedPassword, hashedPin] = await Promise.all([
+      bcrypt.hash(password, SALT_ROUNDS),
+      bcrypt.hash(pin, SALT_ROUNDS),
+    ]);
 
     const company = await prisma.company.create({
       data: { name: companyName, address: companyAddress, phone: companyPhone },
@@ -42,23 +70,26 @@ export const authMutations = {
       include: { company: true },
     });
 
-    const payload = { userId: user.id };
-    const accessToken = generateAccessToken(payload);
-    const refreshToken = generateRefreshToken(payload);
+    const tokenPayload = { userId: user.id };
+    const accessToken = generateAccessToken(tokenPayload);
+    const refreshToken = generateRefreshToken(tokenPayload);
 
     await prisma.refreshToken.create({
-      data: {
-        token: refreshToken,
-        userId: user.id,
-        expiresAt: refreshTokenExpiryDate(),
-      },
+      data: { token: refreshToken, userId: user.id, expiresAt: getRefreshTokenExpiry() },
     });
 
     return { accessToken, refreshToken, user };
   },
 
-  async login(_, { email, password }, { prisma }) {
-    const user = await prisma.user.findUnique({ where: { email } });
+  async login(
+    _: unknown,
+    { email, password }: LoginArgs,
+    { prisma }: AppContext,
+  ): Promise<AuthPayloadResult> {
+    const user = await prisma.user.findUnique({
+      where: { email },
+      include: { company: true },
+    });
     if (!user) {
       throw new GraphQLError("Invalid credentials", {
         extensions: { code: "UNAUTHENTICATED" },
@@ -72,22 +103,22 @@ export const authMutations = {
       });
     }
 
-    const payload = { userId: user.id };
-    const accessToken = generateAccessToken(payload);
-    const refreshToken = generateRefreshToken(payload);
+    const tokenPayload = { userId: user.id };
+    const accessToken = generateAccessToken(tokenPayload);
+    const refreshToken = generateRefreshToken(tokenPayload);
 
     await prisma.refreshToken.create({
-      data: {
-        token: refreshToken,
-        userId: user.id,
-        expiresAt: refreshTokenExpiryDate(),
-      },
+      data: { token: refreshToken, userId: user.id, expiresAt: getRefreshTokenExpiry() },
     });
 
     return { accessToken, refreshToken, user };
   },
 
-  async refreshToken(_, { refreshToken }, { prisma }) {
+  async refreshToken(
+    _: unknown,
+    { refreshToken }: RefreshTokenArgs,
+    { prisma }: AppContext,
+  ): Promise<{ accessToken: string; refreshToken: string }> {
     let decoded;
     try {
       decoded = verifyRefreshToken(refreshToken);
@@ -99,6 +130,7 @@ export const authMutations = {
 
     const stored = await prisma.refreshToken.findUnique({
       where: { token: refreshToken },
+      select: { expiresAt: true },
     });
 
     if (!stored || stored.expiresAt < new Date()) {
@@ -107,25 +139,28 @@ export const authMutations = {
       });
     }
 
-    // Rotate the refresh token
     await prisma.refreshToken.delete({ where: { token: refreshToken } });
 
-    const payload = { userId: decoded.userId };
-    const newAccessToken = generateAccessToken(payload);
-    const newRefreshToken = generateRefreshToken(payload);
+    const tokenPayload = { userId: decoded.userId };
+    const newAccessToken = generateAccessToken(tokenPayload);
+    const newRefreshToken = generateRefreshToken(tokenPayload);
 
     await prisma.refreshToken.create({
       data: {
         token: newRefreshToken,
         userId: decoded.userId,
-        expiresAt: refreshTokenExpiryDate(),
+        expiresAt: getRefreshTokenExpiry(),
       },
     });
 
     return { accessToken: newAccessToken, refreshToken: newRefreshToken };
   },
 
-  async logout(_, { refreshToken }, { prisma }) {
+  async logout(
+    _: unknown,
+    { refreshToken }: LogoutArgs,
+    { prisma }: AppContext,
+  ): Promise<boolean> {
     await prisma.refreshToken.deleteMany({ where: { token: refreshToken } });
     return true;
   },

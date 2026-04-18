@@ -1,38 +1,18 @@
 import nodemailer from "nodemailer";
+import { env } from "../config/env.js";
 
-function createTransport() {
-  if (process.env.SMTP_HOST) {
-    return nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port: parseInt(process.env.SMTP_PORT) || 587,
-      secure: process.env.SMTP_SECURE === "true",
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
-      },
-    });
-  }
+const transporter = env.SMTP_HOST
+  ? nodemailer.createTransport({
+      host: env.SMTP_HOST,
+      port: env.SMTP_PORT,
+      secure: env.SMTP_SECURE,
+      auth: { user: env.SMTP_USER, pass: env.SMTP_PASS },
+    })
+  : null;
 
-  // Dev fallback: log to console instead of sending
-  return {
-    sendMail: async (options) => {
-      console.log("\n--- [DEV EMAIL] ---");
-      console.log("To:", options.to);
-      console.log("Subject:", options.subject);
-      console.log("Text:", options.text);
-      console.log("-------------------\n");
-      return { messageId: "dev-mode" };
-    },
-  };
-}
-
-const transporter = createTransport();
-
-export async function sendMagicLinkEmail(to, magicLinkUrl) {
-  const from = process.env.SMTP_FROM;
-
-  await transporter.sendMail({
-    from,
+export async function sendMagicLinkEmail(to: string, magicLinkUrl: string): Promise<void> {
+  const mailOptions = {
+    from: env.SMTP_FROM,
     to,
     subject: "Your Moonpod magic link",
     text: `Click the link below to sign in to Moonpod. This link expires in 15 minutes and can only be used once.\n\n${magicLinkUrl}\n\nIf you didn't request this, you can safely ignore this email.`,
@@ -45,5 +25,15 @@ export async function sendMagicLinkEmail(to, magicLinkUrl) {
         <p style="color:#bbb;font-size:12px">If you didn't request this, you can safely ignore this email.</p>
       </div>
     `,
-  });
+  };
+
+  if (transporter) {
+    await transporter.sendMail(mailOptions);
+  } else {
+    console.log("\n--- [DEV EMAIL] ---");
+    console.log("To:", to);
+    console.log("Subject:", mailOptions.subject);
+    console.log("Text:", mailOptions.text);
+    console.log("-------------------\n");
+  }
 }
