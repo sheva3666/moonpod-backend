@@ -1,6 +1,7 @@
 import { GraphQLError } from "graphql";
 import type { Prisma } from "@prisma/client";
 import type { AppContext } from "../../context.js";
+import type { UserWithCompany } from "../../types.js";
 import type { TeamMembersArgs, TeamMembersResult } from "./types.js";
 import { buildOrderBy, buildSearchFilter, buildFilterWhere } from "./utils.js";
 
@@ -8,6 +9,49 @@ const DEFAULT_PAGE_SIZE = 30;
 const MAX_PAGE_SIZE = 100;
 
 export const userService = {
+  async checkEmail(
+    { prisma }: AppContext,
+    { email }: { email: string },
+  ): Promise<{ exists: boolean }> {
+    const user = await prisma.user.findUnique({ where: { email }, select: { id: true } });
+    return { exists: user !== null };
+  },
+
+  async getMe(
+    { prisma, userId }: AppContext,
+  ): Promise<UserWithCompany> {
+    if (!userId) {
+      throw new GraphQLError("Not authenticated", {
+        extensions: { code: "UNAUTHENTICATED" },
+      });
+    }
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: { company: true },
+    });
+    if (!user) {
+      throw new GraphQLError("User not found", {
+        extensions: { code: "NOT_FOUND" },
+      });
+    }
+    return user;
+  },
+
+  async getUsers(
+    { prisma, userId }: AppContext,
+  ): Promise<UserWithCompany[]> {
+    if (!userId) {
+      throw new GraphQLError("Not authenticated", {
+        extensions: { code: "UNAUTHENTICATED" },
+      });
+    }
+    return prisma.user.findMany({
+      include: { company: true },
+      orderBy: { createdAt: "desc" },
+      take: MAX_PAGE_SIZE,
+    });
+  },
+
   async getTeamMembers(
     { prisma, userId }: AppContext,
     args: TeamMembersArgs,
