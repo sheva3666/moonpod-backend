@@ -122,5 +122,8 @@ export const typeDefs = `#graphql
 
     sendMagicLink(email: String!): Boolean!
     verifyMagicLink(token: String!): AuthPayload!
+
+    requestPasswordReset(email: String!): Boolean!
+    resetPassword(token: String!, newPassword: String!): Boolean!
   }
 `;
