@@ -4,11 +4,11 @@ import {
   generateAccessToken,
   generateRefreshToken,
   getRefreshTokenExpiry,
-} from "../../auth/jwt.js";
-import { sendMagicLinkEmail } from "../../services/email.js";
-import { env } from "../../config/env.js";
-import type { AppContext } from "../../context.js";
-import type { AuthPayloadResult } from "../../types.js";
+} from "../../../auth/jwt.js";
+import { sendMagicLinkEmail } from "../../../services/email.js";
+import { env } from "../../../config/env.js";
+import type { AppContext } from "../../../context.js";
+import type { AuthPayloadResult } from "../../../types.js";
 
 const TOKEN_TTL_MS = 15 * 60 * 1000;
 

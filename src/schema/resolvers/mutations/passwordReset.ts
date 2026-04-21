@@ -1,9 +1,9 @@
 import { randomBytes } from "node:crypto";
 import bcrypt from "bcryptjs";
 import { GraphQLError } from "graphql";
-import { sendPasswordResetEmail } from "../../services/email.js";
-import { env } from "../../config/env.js";
-import type { AppContext } from "../../context.js";
+import { sendPasswordResetEmail } from "../../../services/email.js";
+import { env } from "../../../config/env.js";
+import type { AppContext } from "../../../context.js";
 
 const TOKEN_TTL_MS = 15 * 60 * 1000;
 const SALT_ROUNDS = 12;

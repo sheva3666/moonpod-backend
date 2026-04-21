@@ -5,9 +5,9 @@ import {
   generateRefreshToken,
   getRefreshTokenExpiry,
   verifyRefreshToken,
-} from "../../auth/jwt.js";
-import type { AppContext } from "../../context.js";
-import type { AuthPayloadResult } from "../../types.js";
+} from "../../../auth/jwt.js";
+import type { AppContext } from "../../../context.js";
+import type { AuthPayloadResult } from "../../../types.js";
 
 const SALT_ROUNDS = 12;
 
