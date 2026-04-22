@@ -11,6 +11,9 @@ export const userQueries = {
   users: (_: unknown, __: Record<string, never>, ctx: AppContext) =>
     userService.getUsers(ctx),
 
+  teamMember: (_: unknown, args: { id: string }, ctx: AppContext) =>
+    userService.getTeamMember(ctx, args),
+
   teamMembers: (_: unknown, args: TeamMembersArgs, ctx: AppContext) =>
     userService.getTeamMembers(ctx, args),
 };

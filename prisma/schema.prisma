@@ -22,7 +22,14 @@ enum AccountType {
   ADMIN
 }
 
-// ─── Models ──────────────────────────────────────────────────────────────────
+enum PayType {
+  HOURLY
+  SALARY
+  CASUAL
+  COMMISSION
+}
+
+// ─── Core ─────────────────────────────────────────────────────────────────────
 
 model Company {
   id        String   @id @default(uuid())
@@ -35,26 +42,125 @@ model Company {
 }
 
 model User {
-  id           String         @id @default(uuid())
-  firstName    String
-  lastName     String
-  email        String         @unique
-  password     String
-  pin          String
-  status       UserStatus     @default(PENDING)
-  accountType  AccountType    @default(EMPLOYEE)
-  companyId    String
-  company      Company        @relation(fields: [companyId], references: [id])
-  locations    UserLocation[]
-  roles        UserRole[]
-  schedules    Schedule[]
-  appointments Appointment[]
-  refreshTokens        RefreshToken[]
-  magicLinkTokens      MagicLinkToken[]
-  passwordResetTokens  PasswordResetToken[]
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
+  id          String      @id @default(uuid())
+  firstName   String
+  lastName    String
+  nickName    String?
+  designation String?
+  email       String      @unique
+  password    String
+  pin         String
+  phone       String?
+  dateOfBirth DateTime?
+  address     String?
+  isKeyHolder Boolean     @default(false)
+  status      UserStatus  @default(PENDING)
+  accountType AccountType @default(EMPLOYEE)
+
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id])
+
+  // ── sections ────────────────────────────────────────────────────────────
+  skills      UserSkill[]
+  pay         UserPay?
+  nextOfKin   UserNextOfKin[]
+  notes       UserNote[]
+  documents   UserDocument[]
+  prompts     UserPrompt[]
+
+  // ── existing relations ───────────────────────────────────────────────────
+  locations           UserLocation[]
+  roles               UserRole[]
+  schedules           Schedule[]
+  appointments        Appointment[]
+  refreshTokens       RefreshToken[]
+  magicLinkTokens     MagicLinkToken[]
+  passwordResetTokens PasswordResetToken[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
+
+// ─── Skills ───────────────────────────────────────────────────────────────────
+
+model UserSkill {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  level     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ─── Pay ──────────────────────────────────────────────────────────────────────
+
+model UserPay {
+  id                String   @id @default(uuid())
+  userId            String   @unique
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  payType           PayType?
+  payRate           Float?
+  currency          String   @default("AUD")
+  bankAccountName   String?
+  bankBsb           String?
+  bankAccountNumber String?
+  superFund         String?
+  superMemberNumber String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+// ─── Next of Kin ──────────────────────────────────────────────────────────────
+
+model UserNextOfKin {
+  id           String   @id @default(uuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name         String
+  relationship String?
+  phone        String?
+  email        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+// ─── Notes ────────────────────────────────────────────────────────────────────
+
+model UserNote {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ─── Documents ────────────────────────────────────────────────────────────────
+
+model UserDocument {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  url       String
+  mimeType  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ─── Prompts ──────────────────────────────────────────────────────────────────
+
+model UserPrompt {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ─── Existing join tables & relations ─────────────────────────────────────────
 
 model UserLocation {
   id         String   @id @default(uuid())

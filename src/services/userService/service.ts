@@ -52,6 +52,45 @@ export const userService = {
     });
   },
 
+  async getTeamMember(
+    { prisma, userId }: AppContext,
+    { id }: { id: string },
+  ) {
+    if (!userId) {
+      throw new GraphQLError("Not authenticated", {
+        extensions: { code: "UNAUTHENTICATED" },
+      });
+    }
+
+    const currentUser = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { companyId: true },
+    });
+
+    if (!currentUser) {
+      throw new GraphQLError("User not found", {
+        extensions: { code: "NOT_FOUND" },
+      });
+    }
+
+    const member = await prisma.user.findFirst({
+      where: { id, companyId: currentUser.companyId },
+      include: {
+        company: true,
+        skills: true,
+        pay: true,
+        nextOfKin: true,
+        notes: true,
+        documents: true,
+        prompts: true,
+        roles: { include: { role: true } },
+        locations: { include: { location: true } },
+      },
+    });
+
+    return member ?? null;
+  },
+
   async getTeamMembers(
     { prisma, userId }: AppContext,
     args: TeamMembersArgs,
