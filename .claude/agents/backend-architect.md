@@ -252,4 +252,76 @@ You're successful when:
 
 ---
 
+## 🏛️ Project Architecture — Non-Negotiable Rules
+
+This project uses a strict **Repository → Service → Resolver** layered architecture. Every code change must respect the following boundaries.
+
+### Layer responsibilities
+
+| Layer | Location | Owns | Must NOT |
+|---|---|---|---|
+| **Repository** | `src/repositories/<domain>Repository/index.ts` | All Prisma / DB interaction. Imports `prisma` from `../../db.js` directly. Contains query methods and atomic transactions (`$transaction`). | Contain business logic, validation, or throw `GraphQLError`. |
+| **Service** | `src/services/<domain>Service/index.ts` | Business logic: input validation (Zod), authorization checks, bcrypt, token generation, audit logging, `GraphQLError` throws. | Import or use `prisma` directly. All DB access must go through a repository. |
+| **Resolver** | `src/schema/resolvers/` | Wire GraphQL operations to services. Pass `AppContext` and args through. | Contain business logic or DB calls. |
+
+### Repository rules
+
+- Import `prisma` from `../../db.js` — never receive it as a parameter.
+- Methods are concise arrow functions that return the Prisma promise directly (no unnecessary `async/await` wrappers).
+- Multi-step atomic operations belong in a dedicated repository method using `prisma.$transaction([...])`.
+- Cross-model transactions (e.g. updating tokens + user + sessions) are acceptable inside a single repository method when they form one logical unit of work.
+- Method names describe the data operation: `findByEmail`, `createRefreshToken`, `performReset`, `rotateRefreshToken`.
+
+```typescript
+// ✅ Correct repository pattern
+import { prisma } from "../../db.js";
+
+export const userRepository = {
+  findByEmail: (email: string) =>
+    prisma.user.findUnique({ where: { email }, select: { id: true } }),
+
+  create: (data: CreateUserData) =>
+    prisma.user.create({ data, include: { company: true } }),
+};
+```
+
+### Service rules
+
+- Services receive `AppContext` from resolvers but only use `userId` from it — never `prisma`.
+- All DB reads and writes go through a repository import.
+- Business rule violations throw `GraphQLError` with a meaningful `extensions.code`.
+- Validation uses Zod schemas defined in `src/schemas/validation.ts`.
+
+```typescript
+// ✅ Correct service pattern
+import { userRepository } from "../../repositories/userRepository/index.js";
+
+export const userService = {
+  async getMe({ userId }: AppContext): Promise<UserWithCompany> {
+    if (!userId) throw new GraphQLError("Not authenticated", { extensions: { code: "UNAUTHENTICATED" } });
+    const user = await userRepository.findByIdWithCompany(userId);
+    if (!user) throw new GraphQLError("User not found", { extensions: { code: "NOT_FOUND" } });
+    return user;
+  },
+};
+```
+
+### Adding a new feature — checklist
+
+1. **Repository first**: add query/mutation methods to the relevant repository (or create a new one following the folder convention `src/repositories/<domain>Repository/index.ts`).
+2. **Service second**: implement business logic that calls the repository. No `prisma` import allowed.
+3. **Type definitions**: add GraphQL types/inputs to `src/schema/typeDefs.ts`.
+4. **Resolver last**: wire the new service method in `src/schema/resolvers/`.
+5. Run `npm run typecheck` — zero errors required before considering the work done.
+
+### Existing repository catalogue
+
+| Repository | Key methods |
+|---|---|
+| `userRepository` | `findByEmail`, `findCurrentUser`, `findByEmailWithCompany`, `findByIdWithCompany`, `findManyByCompany`, `findMember`, `findMembersWithCount`, `create`, `updatePassword` |
+| `companyRepository` | `create` |
+| `authRepository` | `createRefreshToken`, `findRefreshToken`, `deleteRefreshToken`, `revokeRefreshToken`, `revokeAllRefreshTokens`, `rotateRefreshToken` |
+| `magicLinkRepository` | `findByToken`, `findRecentUnused`, `invalidateAll`, `markUsed`, `create` |
+| `passwordResetRepository` | `findByToken`, `invalidateAll`, `create`, `performReset` |
+
 **Instructions Reference**: Your detailed architecture methodology is in your core training - refer to comprehensive system design patterns, database optimization techniques, and security frameworks for complete guidance.

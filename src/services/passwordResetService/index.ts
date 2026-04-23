@@ -6,46 +6,30 @@ import { env } from "../../config/env.js";
 import type { AppContext } from "../../context.js";
 import { passwordSchema } from "../../schemas/validation.js";
 import { auditService } from "../auditService.js";
+import { userRepository } from "../../repositories/userRepository/index.js";
+import { passwordResetRepository } from "../../repositories/passwordResetRepository/index.js";
 
 const TOKEN_TTL_MS = 15 * 60 * 1000;
 const SALT_ROUNDS = 12;
 
 export const passwordResetService = {
-  async requestPasswordReset(
-    { prisma }: AppContext,
-    { email }: { email: string },
-  ): Promise<boolean> {
-    const user = await prisma.user.findUnique({
-      where: { email },
-      select: { id: true },
-    });
+  async requestPasswordReset(_ctx: AppContext, { email }: { email: string }): Promise<boolean> {
+    const user = await userRepository.findByEmail(email);
 
     // Always return true — don't reveal whether the email exists
     if (!user) return true;
 
-    await prisma.passwordResetToken.updateMany({
-      where: { userId: user.id, used: false },
-      data: { used: true },
-    });
+    await passwordResetRepository.invalidateAll(user.id);
 
     const token = randomBytes(32).toString("hex");
-    const expiresAt = new Date(Date.now() + TOKEN_TTL_MS);
+    await passwordResetRepository.create({ token, userId: user.id, expiresAt: new Date(Date.now() + TOKEN_TTL_MS) });
 
-    await prisma.passwordResetToken.create({
-      data: { token, userId: user.id, expiresAt },
-    });
-
-    const resetUrl = `${env.APP_URL}/auth/reset-password?token=${token}`;
-    await sendPasswordResetEmail(email, resetUrl);
+    await sendPasswordResetEmail(email, `${env.APP_URL}/auth/reset-password?token=${token}`);
 
     return true;
   },
 
-  async resetPassword(
-    { prisma }: AppContext,
-    { token, newPassword }: { token: string; newPassword: string },
-  ): Promise<boolean> {
-    // C2: validate password strength before touching the DB
+  async resetPassword(_ctx: AppContext, { token, newPassword }: { token: string; newPassword: string }): Promise<boolean> {
     const passwordResult = passwordSchema.safeParse(newPassword);
     if (!passwordResult.success) {
       throw new GraphQLError(passwordResult.error.issues[0]?.message ?? "Invalid password", {
@@ -53,11 +37,7 @@ export const passwordResetService = {
       });
     }
 
-    const record = await prisma.passwordResetToken.findUnique({
-      where: { token },
-      select: { id: true, userId: true, used: true, expiresAt: true },
-    });
-
+    const record = await passwordResetRepository.findByToken(token);
     if (!record || record.used || record.expiresAt < new Date()) {
       throw new GraphQLError("Reset link is invalid or has expired", {
         extensions: { code: "BAD_USER_INPUT" },
@@ -66,23 +46,7 @@ export const passwordResetService = {
 
     const hashedPassword = await bcrypt.hash(passwordResult.data, SALT_ROUNDS);
 
-    // C1: invalidate ALL unused reset tokens for this user, not just the current one
-    await prisma.$transaction([
-      prisma.passwordResetToken.update({
-        where: { id: record.id },
-        data: { used: true },
-      }),
-      prisma.passwordResetToken.updateMany({
-        where: { userId: record.userId, used: false },
-        data: { used: true },
-      }),
-      prisma.user.update({
-        where: { id: record.userId },
-        data: { password: hashedPassword },
-      }),
-      // Revoke all sessions so old sessions cannot be reused after a password change
-      prisma.refreshToken.deleteMany({ where: { userId: record.userId } }),
-    ]);
+    await passwordResetRepository.performReset(record.id, record.userId, hashedPassword);
 
     auditService.log({ action: "PASSWORD_RESET", userId: record.userId, success: true });
 

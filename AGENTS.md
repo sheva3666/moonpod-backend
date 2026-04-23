@@ -179,7 +179,73 @@ Additional rules:
 
 ---
 
-## 6. Validation Rules
+## 6. Repository Layer Rules
+
+Repositories are the **only** place where Prisma is used. Every DB operation must live here.
+
+### Structure
+
+```
+src/repositories/
+└── <domain>Repository/
+    └── index.ts      ← one file per domain, no sub-files
+```
+
+Existing repositories and their public methods:
+
+| Repository | Methods |
+|---|---|
+| `userRepository` | `findByEmail`, `findByEmailWithCompany`, `findCurrentUser`, `findByIdWithCompany`, `findManyByCompany`, `findMember`, `findMembersWithCount`, `create`, `updatePassword` |
+| `companyRepository` | `create` |
+| `authRepository` | `createRefreshToken`, `findRefreshToken`, `deleteRefreshToken`, `revokeRefreshToken`, `revokeAllRefreshTokens`, `rotateRefreshToken` |
+| `magicLinkRepository` | `findByToken`, `findRecentUnused`, `invalidateAll`, `markUsed`, `create` |
+| `passwordResetRepository` | `findByToken`, `invalidateAll`, `create`, `performReset` |
+
+### Writing a repository method
+
+- Import `prisma` from `../../db.js` at the top of the file. Never receive it as a parameter.
+- Methods are concise **arrow functions** that return the Prisma promise directly — no unnecessary `async/await` wrappers unless the method contains branching logic.
+- Name methods after the data operation, not the caller's intent: `findByEmail`, not `checkIfUserExists`.
+- Multi-step operations that must be atomic belong in a dedicated method using `prisma.$transaction([...])`.
+- Cross-model transactions (e.g. updating tokens + user + sessions in one shot) are acceptable inside a single repository method when they form one logical unit of work.
+
+```typescript
+// ✅ Correct repository
+import { prisma } from "../../db.js";
+
+export const userRepository = {
+  findByEmail: (email: string) =>
+    prisma.user.findUnique({ where: { email }, select: { id: true } }),
+
+  create: (data: CreateUserData) =>
+    prisma.user.create({ data, include: { company: true } }),
+
+  // atomic cross-model operation owned entirely by this repository
+  performReset: (tokenId: string, userId: string, hashedPassword: string) =>
+    prisma.$transaction([
+      prisma.passwordResetToken.update({ where: { id: tokenId }, data: { used: true } }),
+      prisma.user.update({ where: { id: userId }, data: { password: hashedPassword } }),
+      prisma.refreshToken.deleteMany({ where: { userId } }),
+    ]),
+};
+
+// ❌ Wrong — prisma as a parameter
+export const userRepository = {
+  findByEmail: (prisma: PrismaClient, email: string) => prisma.user.findUnique(...),
+};
+```
+
+### Adding a new feature — required order
+
+1. **Repository first** — add or create query/write methods in the appropriate repository.
+2. **Service second** — implement business logic that calls those repository methods. Zero `prisma` usage.
+3. **Type definitions** — extend `src/schema/typeDefs.ts` with new GraphQL types or inputs.
+4. **Resolver last** — wire the service method in `src/schema/resolvers/`.
+5. **Typecheck** — run `npm run typecheck`. Zero errors required before the work is done.
+
+---
+
+## 7. Validation Rules
 
 - Write a **Zod schema for every GraphQL input type**. GraphQL checks shapes, not business constraints.
 - Sanitize inside schemas: `.trim()`, `.toLowerCase()` for emails, `.max()` for all strings.
@@ -189,7 +255,7 @@ Additional rules:
 
 ---
 
-## 7. Error Handling Rules
+## 8. Error Handling Rules
 
 ### Error Structure
 
@@ -224,7 +290,7 @@ catch (error: unknown) {
 
 ---
 
-## 8. Security Rules
+## 9. Security Rules
 
 - **Never trust client input.** Validate and sanitize everything at the service boundary via Zod.
 - **Never interpolate values into raw SQL.** Always use `Prisma.sql` parameterized queries.
@@ -237,7 +303,7 @@ catch (error: unknown) {
 
 ---
 
-## 9. Testing Rules
+## 10. Testing Rules
 
 ### What To Test
 
@@ -270,7 +336,7 @@ const user = { id: '1', name: 'Test', email: 'test@test.com', role: 'ADMIN', cre
 
 ---
 
-## 10. Code Style & Naming
+## 11. Code Style & Naming
 
 | Entity                 | Convention        | Example                                 |
 | ---------------------- | ----------------- | --------------------------------------- |
@@ -318,7 +384,7 @@ import type { CreateUserInput } from "./user.types";
 
 ---
 
-## 11. Layer Dependency Rules
+## 12. Layer Dependency Rules
 
 These are hard constraints on what may import what:
 
@@ -335,7 +401,7 @@ These are hard constraints on what may import what:
 
 ---
 
-## 12. Performance Rules
+## 13. Performance Rules
 
 - Every list query is **paginated** with a hard max (100 items). No unbounded lists.
 - Every relation resolved inside a list uses a **DataLoader**.
@@ -347,7 +413,7 @@ These are hard constraints on what may import what:
 
 ---
 
-## 13. Git & PR Rules
+## 14. Git & PR Rules
 
 - Use **Conventional Commits**: `feat(user):`, `fix(auth):`, `refactor(order):`, `test(payment):`, `chore(deps):`.
 - One concern per commit. One concern per PR.
@@ -357,7 +423,7 @@ These are hard constraints on what may import what:
 
 ---
 
-## 14. Environment & Configuration
+## 15. Environment & Configuration
 
 - All configuration comes from environment variables. Never hardcode connection strings, secrets, or feature flags.
 - Use a Zod schema at startup to parse and validate all env vars. Crash immediately on missing or invalid config:
