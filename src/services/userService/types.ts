@@ -1,3 +1,26 @@
+export type CreateTeamMemberInput = {
+  firstName: string;
+  lastName: string;
+  email: string;
+  pin: string;
+  accountType?: string | null;
+  nickName?: string | null;
+  designation?: string | null;
+};
+
+export type UpdateTeamMemberInput = {
+  firstName?: string | null;
+  lastName?: string | null;
+  nickName?: string | null;
+  designation?: string | null;
+  accountType?: string | null;
+  status?: string | null;
+  phone?: string | null;
+  dateOfBirth?: string | null;
+  address?: string | null;
+  isKeyHolder?: boolean | null;
+};
+
 export type TeamMembersFilter = {
   firstName?: string | null;
   lastName?: string | null;

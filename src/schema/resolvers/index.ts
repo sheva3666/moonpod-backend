@@ -1,6 +1,7 @@
 import { authMutations } from "./mutations/auth.js";
 import { magicLinkMutations } from "./mutations/magicLink.js";
 import { passwordResetMutations } from "./mutations/passwordReset.js";
+import { teamMemberMutations } from "./mutations/teamMember.js";
 import { userQueries } from "./queries/user.js";
 
 export const resolvers = {
@@ -11,5 +12,6 @@ export const resolvers = {
     ...authMutations,
     ...magicLinkMutations,
     ...passwordResetMutations,
+    ...teamMemberMutations,
   },
 };

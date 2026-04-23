@@ -161,6 +161,29 @@ export const typeDefs = `#graphql
     status: UserStatus
   }
 
+  input CreateTeamMemberInput {
+    firstName: String!
+    lastName: String!
+    email: String!
+    pin: String!
+    accountType: AccountType
+    nickName: String
+    designation: String
+  }
+
+  input UpdateTeamMemberInput {
+    firstName: String
+    lastName: String
+    nickName: String
+    designation: String
+    accountType: AccountType
+    status: UserStatus
+    phone: String
+    dateOfBirth: String
+    address: String
+    isKeyHolder: Boolean
+  }
+
   type Query {
     me: User!
     users: [User!]!
@@ -197,5 +220,8 @@ export const typeDefs = `#graphql
 
     requestPasswordReset(email: String!): Boolean!
     resetPassword(token: String!, newPassword: String!): Boolean!
+
+    createTeamMember(input: CreateTeamMemberInput!): User!
+    updateTeamMember(id: ID!, input: UpdateTeamMemberInput!): User!
   }
 `;

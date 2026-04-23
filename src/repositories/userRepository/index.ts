@@ -1,4 +1,4 @@
-import type { Prisma, AccountType } from "@prisma/client";
+import type { Prisma, AccountType, UserStatus } from "@prisma/client";
 import { prisma } from "../../db.js";
 
 type CreateUserData = {
@@ -9,6 +9,12 @@ type CreateUserData = {
   pin: string;
   accountType: AccountType;
   companyId: string;
+};
+
+type CreateMemberData = CreateUserData & {
+  nickName?: string | null;
+  designation?: string | null;
+  status?: UserStatus;
 };
 
 type FindMembersOptions = {
@@ -71,6 +77,35 @@ export const userRepository = {
 
   create: (data: CreateUserData) =>
     prisma.user.create({ data, include: { company: true } }),
+
+  createMember: (data: CreateMemberData) =>
+    prisma.user.create({
+      data,
+      include: {
+        company: true,
+        skills: true,
+        pay: true,
+        nextOfKin: true,
+        notes: true,
+        documents: true,
+        prompts: true,
+      },
+    }),
+
+  updateMember: (id: string, data: Prisma.UserUpdateInput) =>
+    prisma.user.update({
+      where: { id },
+      data,
+      include: {
+        company: true,
+        skills: true,
+        pay: true,
+        nextOfKin: true,
+        notes: true,
+        documents: true,
+        prompts: true,
+      },
+    }),
 
   updatePassword: (id: string, hashedPassword: string) =>
     prisma.user.update({ where: { id }, data: { password: hashedPassword } }),
