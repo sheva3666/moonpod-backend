@@ -6,7 +6,13 @@ const tokenPayloadSchema = z.object({ userId: z.string() });
 
 export type TokenPayload = z.infer<typeof tokenPayloadSchema>;
 
-const MS_PER_DAY = 24 * 60 * 60 * 1000;
+function parseExpiryToMs(expiry: string): number {
+  const match = expiry.match(/^(\d+)([dhms])$/);
+  if (!match) return 7 * 86_400_000;
+  const value = parseInt(match[1], 10);
+  const units: Record<string, number> = { d: 86_400_000, h: 3_600_000, m: 60_000, s: 1_000 };
+  return value * (units[match[2]] ?? units.d);
+}
 
 export function generateAccessToken(payload: TokenPayload): string {
   return jwt.sign(payload, env.JWT_ACCESS_SECRET, {
@@ -31,6 +37,5 @@ export function verifyRefreshToken(token: string): TokenPayload {
 }
 
 export function getRefreshTokenExpiry(): Date {
-  const days = parseInt(env.JWT_REFRESH_EXPIRES_IN) || 7;
-  return new Date(Date.now() + days * MS_PER_DAY);
+  return new Date(Date.now() + parseExpiryToMs(env.JWT_REFRESH_EXPIRES_IN));
 }

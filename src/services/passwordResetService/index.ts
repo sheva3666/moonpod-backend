@@ -4,6 +4,8 @@ import { GraphQLError } from "graphql";
 import { sendPasswordResetEmail } from "../email.js";
 import { env } from "../../config/env.js";
 import type { AppContext } from "../../context.js";
+import { passwordSchema } from "../../schemas/validation.js";
+import { auditService } from "../auditService.js";
 
 const TOKEN_TTL_MS = 15 * 60 * 1000;
 const SALT_ROUNDS = 12;
@@ -43,6 +45,14 @@ export const passwordResetService = {
     { prisma }: AppContext,
     { token, newPassword }: { token: string; newPassword: string },
   ): Promise<boolean> {
+    // C2: validate password strength before touching the DB
+    const passwordResult = passwordSchema.safeParse(newPassword);
+    if (!passwordResult.success) {
+      throw new GraphQLError(passwordResult.error.issues[0]?.message ?? "Invalid password", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+
     const record = await prisma.passwordResetToken.findUnique({
       where: { token },
       select: { id: true, userId: true, used: true, expiresAt: true },
@@ -54,20 +64,27 @@ export const passwordResetService = {
       });
     }
 
-    const hashedPassword = await bcrypt.hash(newPassword, SALT_ROUNDS);
+    const hashedPassword = await bcrypt.hash(passwordResult.data, SALT_ROUNDS);
 
+    // C1: invalidate ALL unused reset tokens for this user, not just the current one
     await prisma.$transaction([
       prisma.passwordResetToken.update({
         where: { id: record.id },
+        data: { used: true },
+      }),
+      prisma.passwordResetToken.updateMany({
+        where: { userId: record.userId, used: false },
         data: { used: true },
       }),
       prisma.user.update({
         where: { id: record.userId },
         data: { password: hashedPassword },
       }),
-      // Invalidate all existing refresh tokens so old sessions are revoked
+      // Revoke all sessions so old sessions cannot be reused after a password change
       prisma.refreshToken.deleteMany({ where: { userId: record.userId } }),
     ]);
+
+    auditService.log({ action: "PASSWORD_RESET", userId: record.userId, success: true });
 
     return true;
   },

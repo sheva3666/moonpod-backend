@@ -4,7 +4,6 @@ export type TeamMembersFilter = {
   email?: string | null;
   role?: string | null;
   accountType?: string | null;
-  pin?: string | null;
   status?: string | null;
 };
 
@@ -22,7 +21,6 @@ export type TeamMemberDto = {
   firstName: string;
   lastName: string;
   email: string;
-  pin: string;
   status: string;
   accountType: string;
   roles: string[];

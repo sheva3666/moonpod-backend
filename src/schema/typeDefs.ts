@@ -104,7 +104,6 @@ export const typeDefs = `#graphql
     nickName: String
     designation: String
     email: String!
-    pin: String!
     phone: String
     dateOfBirth: String
     address: String
@@ -127,7 +126,6 @@ export const typeDefs = `#graphql
     firstName: String!
     lastName: String!
     email: String!
-    pin: String!
     status: UserStatus!
     accountType: AccountType!
     roles: [String!]!
@@ -160,7 +158,6 @@ export const typeDefs = `#graphql
     email: String
     role: String
     accountType: AccountType
-    pin: String
     status: UserStatus
   }
 

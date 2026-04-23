@@ -25,6 +25,17 @@ export const magicLinkService = {
     // Always return true — don't reveal whether the email exists
     if (!user) return true;
 
+    // H5: prevent hammering — if a valid token was issued within the last 60 seconds, silently skip
+    const recentToken = await prisma.magicLinkToken.findFirst({
+      where: {
+        userId: user.id,
+        used: false,
+        expiresAt: { gt: new Date(Date.now() - 60_000) },
+        createdAt: { gt: new Date(Date.now() - 60_000) },
+      },
+    });
+    if (recentToken) return true;
+
     await prisma.magicLinkToken.updateMany({
       where: { userId: user.id, used: false },
       data: { used: true },
