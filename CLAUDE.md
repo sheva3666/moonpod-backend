@@ -27,6 +27,10 @@ After any change to `prisma/schema.prisma`, always run `db:migrate` followed by 
 
 `src/config/env.ts` — Zod-validated env schema. All modules import `env` from here; never use `process.env` directly elsewhere. Crashes on startup if required vars are missing.
 
+### Database Client
+
+`src/db.ts` — singleton `PrismaClient`. Enables query logging in development (`NODE_ENV=development`). Import `prisma` from here; never instantiate `PrismaClient` elsewhere.
+
 ### Shared Types
 
 `src/types.ts` — shared TypeScript types (`UserWithCompany`, `AuthPayloadResult`) derived from Prisma models.
@@ -34,8 +38,34 @@ After any change to `prisma/schema.prisma`, always run `db:migrate` followed by 
 ### GraphQL Schema & Resolvers
 
 - **Type definitions**: `src/schema/typeDefs.ts` — single file with all types, queries, and mutations
-- **Resolvers**: `src/schema/resolvers/` — split by domain (`auth.ts`, `magicLink.ts`, `user.ts`), merged in `index.ts`
-- To add a new operation: add the type definition to `typeDefs.ts`, create or update the resolver file, then export it from `index.ts`
+- **Resolvers**: `src/schema/resolvers/` — split into `mutations/` and `queries/` subdirectories, merged in `index.ts`
+  - `mutations/auth.ts` — register, login, refreshToken, logout
+  - `mutations/magicLink.ts` — sendMagicLink, verifyMagicLink
+  - `mutations/passwordReset.ts` — requestPasswordReset, resetPassword
+  - `mutations/teamMember.ts` — createTeamMember, updateTeamMember
+  - `queries/user.ts` — me, users, teamMember, teamMembers, checkEmail
+- To add a new operation: add the type definition to `typeDefs.ts`, create or update the resolver file under the appropriate subdirectory, then export it from `index.ts`
+
+### Service Layer
+
+Business logic lives in `src/services/`. Resolvers delegate directly to services; services call repositories.
+
+- `authService` — register, login, refreshToken, logout. Handles bcrypt hashing and token issuance.
+- `userService` — getMe, getUsers, getTeamMember, getTeamMembers, createTeamMember, updateTeamMember. Enforces company scoping and authorization rules.
+- `magicLinkService` — sendMagicLink, verifyMagicLink.
+- `passwordResetService` — requestPasswordReset, resetPassword.
+- `auditService` — fire-and-forget console JSON logger for security events (LOGIN_SUCCESS, LOGIN_FAILED, REGISTER, PASSWORD_RESET, REFRESH_TOKEN_REUSE_DETECTED). Does not write to the database.
+- `email.ts` — nodemailer wrapper. Falls back to console logging when `SMTP_HOST` is not set (dev mode).
+
+### Repository Layer
+
+Data access lives in `src/repositories/`. Services call repositories; repositories call `prisma` directly.
+
+- `authRepository` — CRUD for `RefreshToken`: create, find, delete (strict), revoke (silent), revokeAll, rotate (atomic transaction).
+- `userRepository` — queries for `User`: findByEmail, findByEmailWithCompany, findCurrentUser, findByIdWithCompany, findManyByCompany, findMember (full profile), findMembersWithCount (paginated, atomic transaction), create, createMember, updateMember, updatePassword.
+- `companyRepository` — create company.
+- `magicLinkRepository` — CRUD for `MagicLinkToken`.
+- `passwordResetRepository` — CRUD for `PasswordResetToken`.
 
 ### Auth Context
 
@@ -47,13 +77,30 @@ After any change to `prisma/schema.prisma`, always run `db:migrate` followed by 
 
 ### Magic Link
 
-`src/schema/resolvers/magicLink.ts`:
-- `sendMagicLink` — invalidates existing unused tokens for the user, generates a 64-char `crypto.randomBytes` hex token, stores it in `MagicLinkToken` (15 min TTL), sends email. Always returns `true` regardless of whether the email exists (security).
+`src/services/magicLinkService/`:
+- `sendMagicLink` — rate-limited (1 per minute per user); invalidates existing unused tokens, generates a 64-char `crypto.randomBytes` hex token, stores it in `MagicLinkToken` (15 min TTL), sends email. Always returns `true` regardless of whether the email exists (security).
 - `verifyMagicLink` — validates token (not used, not expired), marks it used, returns `AuthPayload` identical to regular login.
 
-### Email Service
+### Password Reset
 
-`src/services/email.ts` — nodemailer wrapper. When `SMTP_HOST` is not set it logs the email to the console instead of sending (dev mode).
+`src/services/passwordResetService/`:
+- `requestPasswordReset` — invalidates existing tokens, generates a 32-byte hex token, stores in `PasswordResetToken` (15 min TTL), sends email. Always returns `true` (security).
+- `resetPassword` — validates token (not used, not expired), hashes new password with bcrypt, updates user, marks token used (atomic via `performReset`).
+
+### Authorization Model
+
+- All mutations/queries require `userId` in context (from JWT); unauthenticated requests throw `UNAUTHENTICATED`.
+- All user data is scoped to `companyId` — users can only see/modify members of their own company.
+- Sensitive fields (`pay`, `notes`, `documents`, `prompts`, `nextOfKin`) are stripped from `getTeamMember` responses unless the requester is the member themselves or has a privileged role.
+- Privileged roles: `OWNER`, `MANAGER`, `ADMIN`. Only these roles can create team members.
+- `createTeamMember` generates a random temporary password; new members log in via magic link.
+
+### Validation
+
+`src/schemas/validation.ts` — Zod schemas used by services before hitting the database:
+- `passwordSchema` — min 8, max 128 chars
+- `pinSchema` — 4–6 digits
+- `registerSchema` — full registration input
 
 ### Required `.env` Variables
 
@@ -63,7 +110,11 @@ JWT_ACCESS_SECRET
 JWT_REFRESH_SECRET
 JWT_ACCESS_EXPIRES_IN   # e.g. 15m
 JWT_REFRESH_EXPIRES_IN  # e.g. 7d
-APP_URL                 # e.g. http://localhost:5173  (used to build magic link URLs)
+APP_URL                 # e.g. http://localhost:5173  (used to build magic link and password reset URLs)
 ```
 
-Optional SMTP vars for real email: `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`. Omit all to use the console fallback.
+Optional vars:
+- SMTP: `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` — omit all to use the console fallback.
+- `ALLOWED_ORIGINS` — comma-separated CORS origins; omit to use defaults.
+- `PORT` — defaults to 4000.
+- `NODE_ENV` — `development` (default), `production`, or `test`. Controls Prisma query logging.

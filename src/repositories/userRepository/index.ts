@@ -109,4 +109,7 @@ export const userRepository = {
 
   updatePassword: (id: string, hashedPassword: string) =>
     prisma.user.update({ where: { id }, data: { password: hashedPassword } }),
+
+  deleteMember: (id: string) =>
+    prisma.user.delete({ where: { id } }),
 };

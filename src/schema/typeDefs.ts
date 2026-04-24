@@ -223,5 +223,6 @@ export const typeDefs = `#graphql
 
     createTeamMember(input: CreateTeamMemberInput!): User!
     updateTeamMember(id: ID!, input: UpdateTeamMemberInput!): User!
+    deleteTeamMember(id: ID!): Boolean!
   }
 `;

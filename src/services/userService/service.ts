@@ -232,6 +232,35 @@ export const userService = {
 
     return userRepository.updateMember(id, data);
   },
+
+  async deleteTeamMember({ userId }: AppContext, id: string): Promise<boolean> {
+    if (!userId) {
+      throw new GraphQLError("Not authenticated", {
+        extensions: { code: "UNAUTHENTICATED" },
+      });
+    }
+    const currentUser = await userRepository.findCurrentUser(userId);
+    if (!currentUser) {
+      throw new GraphQLError("User not found", {
+        extensions: { code: "NOT_FOUND" },
+      });
+    }
+    if (!(PRIVILEGED_ROLES as readonly string[]).includes(currentUser.accountType)) {
+      throw new GraphQLError("Forbidden", {
+        extensions: { code: "FORBIDDEN" },
+      });
+    }
+
+    const member = await userRepository.findMember(id, currentUser.companyId);
+    if (!member) {
+      throw new GraphQLError("Member not found", {
+        extensions: { code: "NOT_FOUND" },
+      });
+    }
+
+    await userRepository.deleteMember(id);
+    return true;
+  },
 };
 
 const mapUser = (input: UpdateTeamMemberInput) => {

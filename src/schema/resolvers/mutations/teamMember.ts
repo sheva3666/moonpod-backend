@@ -8,4 +8,7 @@ export const teamMemberMutations = {
 
   updateTeamMember: (_: unknown, { id, input }: { id: string; input: UpdateTeamMemberInput }, ctx: AppContext) =>
     userService.updateTeamMember(ctx, id, input),
+
+  deleteTeamMember: (_: unknown, { id }: { id: string }, ctx: AppContext) =>
+    userService.deleteTeamMember(ctx, id),
 };
