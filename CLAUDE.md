@@ -43,7 +43,9 @@ After any change to `prisma/schema.prisma`, always run `db:migrate` followed by 
   - `mutations/magicLink.ts` — sendMagicLink, verifyMagicLink
   - `mutations/passwordReset.ts` — requestPasswordReset, resetPassword
   - `mutations/teamMember.ts` — createTeamMember, updateTeamMember
+  - `mutations/role.ts` — createRole, updateRole, deleteRole
   - `queries/user.ts` — me, users, teamMember, teamMembers, checkEmail
+  - `queries/role.ts` — roles, role
 - To add a new operation: add the type definition to `typeDefs.ts`, create or update the resolver file under the appropriate subdirectory, then export it from `index.ts`
 
 ### Service Layer
@@ -52,6 +54,7 @@ Business logic lives in `src/services/`. Resolvers delegate directly to services
 
 - `authService` — register, login, refreshToken, logout. Handles bcrypt hashing and token issuance.
 - `userService` — getMe, getUsers, getTeamMember, getTeamMembers, createTeamMember, updateTeamMember. Enforces company scoping and authorization rules.
+- `roleService` — getRoles, getRole, createRole, updateRole, deleteRole. All operations are company-scoped; enforces unique role names per company.
 - `magicLinkService` — sendMagicLink, verifyMagicLink.
 - `passwordResetService` — requestPasswordReset, resetPassword.
 - `auditService` — fire-and-forget console JSON logger for security events (LOGIN_SUCCESS, LOGIN_FAILED, REGISTER, PASSWORD_RESET, REFRESH_TOKEN_REUSE_DETECTED). Does not write to the database.
@@ -63,6 +66,7 @@ Data access lives in `src/repositories/`. Services call repositories; repositori
 
 - `authRepository` — CRUD for `RefreshToken`: create, find, delete (strict), revoke (silent), revokeAll, rotate (atomic transaction).
 - `userRepository` — queries for `User`: findByEmail, findByEmailWithCompany, findCurrentUser, findByIdWithCompany, findManyByCompany, findMember (full profile), findMembersWithCount (paginated, atomic transaction), create, createMember, updateMember, updatePassword.
+- `roleRepository` — CRUD for `Role`: findManyWithCount (paginated + total, atomic transaction), findByIdAndCompany, findByName (unique compound key), create, update, delete.
 - `companyRepository` — create company.
 - `magicLinkRepository` — CRUD for `MagicLinkToken`.
 - `passwordResetRepository` — CRUD for `PasswordResetToken`.
