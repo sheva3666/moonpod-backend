@@ -37,6 +37,7 @@ model Company {
   address   String
   phone     String
   users     User[]
+  roles     Role[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -193,11 +194,18 @@ model Location {
 }
 
 model Role {
-  id        String     @id @default(uuid())
-  name      String     @unique
-  users     UserRole[]
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
+  id          String     @id @default(uuid())
+  name        String
+  description String?
+  otpAllowed  Boolean    @default(false)
+  permissions Json?
+  companyId   String
+  company     Company    @relation(fields: [companyId], references: [id])
+  users       UserRole[]
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@unique([companyId, name])
 }
 
 model Schedule {

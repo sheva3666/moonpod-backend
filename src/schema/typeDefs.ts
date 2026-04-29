@@ -33,6 +33,11 @@ export const typeDefs = `#graphql
     CREATED_AT
   }
 
+  enum RoleSortField {
+    NAME
+    CREATED_AT
+  }
+
   type Company {
     id: ID!
     name: String!
@@ -40,6 +45,35 @@ export const typeDefs = `#graphql
     phone: String!
     createdAt: String!
     updatedAt: String!
+  }
+
+  type RolePermission {
+    module: String!
+    canRead: Boolean!
+    canEdit: Boolean!
+    canDelete: Boolean!
+  }
+
+  input RolePermissionInput {
+    module: String!
+    canRead: Boolean!
+    canEdit: Boolean!
+    canDelete: Boolean!
+  }
+
+  type Role {
+    id: ID!
+    name: String!
+    description: String
+    otpAllowed: Boolean!
+    permissions: [RolePermission!]!
+    createdAt: String!
+    updatedAt: String!
+  }
+
+  type RolesResult {
+    roles: [Role!]!
+    total: Int!
   }
 
   type UserSkill {
@@ -197,6 +231,14 @@ export const typeDefs = `#graphql
       search: String
       filter: TeamMembersFilter
     ): TeamMembersResult!
+    roles(
+      page: Int
+      pageSize: Int
+      sortField: RoleSortField
+      sortDirection: SortDirection
+      search: String
+    ): RolesResult!
+    role(id: ID!): Role
   }
 
   type Mutation {
@@ -224,5 +266,9 @@ export const typeDefs = `#graphql
     createTeamMember(input: CreateTeamMemberInput!): User!
     updateTeamMember(id: ID!, input: UpdateTeamMemberInput!): User!
     deleteTeamMember(id: ID!): Boolean!
+
+    createRole(name: String!, description: String, otpAllowed: Boolean, permissions: [RolePermissionInput!]): Role!
+    updateRole(id: ID!, name: String!, description: String, otpAllowed: Boolean, permissions: [RolePermissionInput!]): Role!
+    deleteRole(id: ID!): Boolean!
   }
 `;
