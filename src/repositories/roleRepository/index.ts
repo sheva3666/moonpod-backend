@@ -74,6 +74,13 @@ export const roleRepository = {
     });
   },
 
+  findManyByIds(ids: string[], companyId: string) {
+    return prisma.role.findMany({
+      where: { id: { in: ids }, companyId },
+      select: { id: true },
+    });
+  },
+
   delete(id: string) {
     return prisma.role.delete({ where: { id } });
   },

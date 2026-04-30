@@ -145,6 +145,7 @@ export const typeDefs = `#graphql
     status: UserStatus!
     accountType: AccountType!
     company: Company!
+    roles: [Role!]!
     skills: [UserSkill!]!
     pay: UserPay
     nextOfKin: [UserNextOfKin!]!
@@ -216,6 +217,7 @@ export const typeDefs = `#graphql
     dateOfBirth: String
     address: String
     isKeyHolder: Boolean
+    roleIds: [ID!]
   }
 
   type Query {

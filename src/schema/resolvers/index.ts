@@ -18,4 +18,9 @@ export const resolvers = {
     ...teamMemberMutations,
     ...roleMutations,
   },
+  User: {
+    // Prisma returns UserRole[] via the join table; map to Role[] for GraphQL.
+    roles: (parent: { roles?: { role: unknown }[] }) =>
+      parent.roles?.map((ur) => ur.role) ?? [],
+  },
 };

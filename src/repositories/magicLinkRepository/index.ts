@@ -10,7 +10,7 @@ export const magicLinkRepository = {
   findByToken: (token: string) =>
     prisma.magicLinkToken.findUnique({
       where: { token },
-      include: { user: { include: { company: true } } },
+      include: { user: { include: { company: true, roles: { include: { role: true } } } } },
     }),
 
   findRecentUnused: (userId: string) =>

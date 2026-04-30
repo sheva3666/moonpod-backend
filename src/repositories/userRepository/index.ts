@@ -28,7 +28,7 @@ export const userRepository = {
     prisma.user.findUnique({ where: { email }, select: { id: true } }),
 
   findByEmailWithCompany: (email: string) =>
-    prisma.user.findUnique({ where: { email }, include: { company: true } }),
+    prisma.user.findUnique({ where: { email }, include: { company: true, roles: { include: { role: true } } } }),
 
   // Returns fields needed for authorization and company scoping.
   findCurrentUser: (id: string) =>
@@ -38,12 +38,12 @@ export const userRepository = {
     }),
 
   findByIdWithCompany: (id: string) =>
-    prisma.user.findUnique({ where: { id }, include: { company: true } }),
+    prisma.user.findUnique({ where: { id }, include: { company: true, roles: { include: { role: true } } } }),
 
   findManyByCompany: (companyId: string) =>
     prisma.user.findMany({
       where: { companyId },
-      include: { company: true },
+      include: { company: true, roles: { include: { role: true } } },
       orderBy: { createdAt: "desc" },
       take: 100,
     }),
@@ -76,7 +76,7 @@ export const userRepository = {
     ]),
 
   create: (data: CreateUserData) =>
-    prisma.user.create({ data, include: { company: true } }),
+    prisma.user.create({ data, include: { company: true, roles: { include: { role: true } } } }),
 
   createMember: (data: CreateMemberData) =>
     prisma.user.create({
@@ -89,13 +89,22 @@ export const userRepository = {
         notes: true,
         documents: true,
         prompts: true,
+        roles: { include: { role: true } },
       },
     }),
 
-  updateMember: (id: string, data: Prisma.UserUpdateInput) =>
+  updateMember: (id: string, data: Prisma.UserUpdateInput, roleIds?: string[]) =>
     prisma.user.update({
       where: { id },
-      data,
+      data: {
+        ...data,
+        ...(roleIds !== undefined ? {
+          roles: {
+            deleteMany: {},
+            create: roleIds.map((roleId) => ({ roleId })),
+          },
+        } : {}),
+      },
       include: {
         company: true,
         skills: true,
@@ -104,6 +113,7 @@ export const userRepository = {
         notes: true,
         documents: true,
         prompts: true,
+        roles: { include: { role: true } },
       },
     }),
 

@@ -19,6 +19,7 @@ export type UpdateTeamMemberInput = {
   dateOfBirth?: string | null;
   address?: string | null;
   isKeyHolder?: boolean | null;
+  roleIds?: string[] | null;
 };
 
 export type TeamMembersFilter = {

@@ -11,4 +11,5 @@ export const teamMemberMutations = {
 
   deleteTeamMember: (_: unknown, { id }: { id: string }, ctx: AppContext) =>
     userService.deleteTeamMember(ctx, id),
+
 };

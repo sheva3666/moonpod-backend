@@ -12,6 +12,7 @@ import type {
 } from "./types.js";
 import { buildOrderBy, buildSearchFilter, buildFilterWhere } from "./utils.js";
 import { userRepository } from "../../repositories/userRepository/index.js";
+import { roleRepository } from "../../repositories/roleRepository/index.js";
 
 const SALT_ROUNDS = 12;
 
@@ -230,7 +231,20 @@ export const userService = {
 
     const data: Prisma.UserUpdateInput = mapUser(input);
 
-    return userRepository.updateMember(id, data);
+    if (input.roleIds != null && input.roleIds.length > 0) {
+      const validRoles = await roleRepository.findManyByIds(input.roleIds, currentUser.companyId);
+      if (validRoles.length !== input.roleIds.length) {
+        throw new GraphQLError("One or more roles not found", {
+          extensions: { code: "BAD_USER_INPUT" },
+        });
+      }
+    }
+
+    return userRepository.updateMember(
+      id,
+      data,
+      input.roleIds !== undefined && input.roleIds !== null ? input.roleIds : undefined,
+    );
   },
 
   async deleteTeamMember({ userId }: AppContext, id: string): Promise<boolean> {
